@@ -6,7 +6,7 @@ const conf = makeConfig({
 
 export default [
   {
-    ignores: [".react-router", "deploy.mjs"],
+    ignores: [".react-router", ".sst", "infra/deploy-remotion.mjs"],
   },
   ...conf,
 ];

@@ -1,12 +1,6 @@
 import { z } from "zod";
 
-export const CompositionProps = z.object({
-  title: z.string(),
-});
-
-export const defaultMyCompProps: z.infer<typeof CompositionProps> = {
-  title: "React Router and Remotion",
-};
+export const CompositionProps = z.object({});
 
 export const RenderRequest = z.object({
   inputProps: CompositionProps,

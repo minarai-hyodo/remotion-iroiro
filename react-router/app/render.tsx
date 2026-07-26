@@ -12,7 +12,7 @@ export const action: ActionFunction = errorAsJson(async ({ request }) => {
     serveUrl: SITE_NAME,
     composition: COMPOSITION_ID,
     inputProps,
-    outName: `logo-animation.mp4`,
+    outName: `remotion-intro.mp4`,
     metadata: null,
   });
 

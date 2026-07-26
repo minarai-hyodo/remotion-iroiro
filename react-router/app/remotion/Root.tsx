@@ -1,34 +1,16 @@
 import { Composition } from "remotion";
-import {
-  DURATION_IN_FRAMES,
-  COMPOSITION_FPS,
-  COMPOSITION_HEIGHT,
-  COMPOSITION_ID,
-  COMPOSITION_WIDTH,
-} from "./constants.mjs";
-import { Main } from "./components/Main";
+import { COMPOSITION_FPS, COMPOSITION_HEIGHT, COMPOSITION_ID, COMPOSITION_WIDTH } from "./constants.mjs";
 import { RemotionIntro, REMOTION_INTRO_DURATION } from "./components/intro/RemotionIntro";
 
 export const RemotionRoot = () => {
   return (
-    <>
-      <Composition
-        id={COMPOSITION_ID}
-        component={Main}
-        durationInFrames={DURATION_IN_FRAMES}
-        fps={COMPOSITION_FPS}
-        width={COMPOSITION_WIDTH}
-        height={COMPOSITION_HEIGHT}
-        defaultProps={{ title: "stranger" }}
-      />
-      <Composition
-        id="RemotionIntro"
-        component={RemotionIntro}
-        durationInFrames={REMOTION_INTRO_DURATION}
-        fps={COMPOSITION_FPS}
-        width={COMPOSITION_WIDTH}
-        height={COMPOSITION_HEIGHT}
-      />
-    </>
+    <Composition
+      id={COMPOSITION_ID}
+      component={RemotionIntro}
+      durationInFrames={REMOTION_INTRO_DURATION}
+      fps={COMPOSITION_FPS}
+      width={COMPOSITION_WIDTH}
+      height={COMPOSITION_HEIGHT}
+    />
   );
 };

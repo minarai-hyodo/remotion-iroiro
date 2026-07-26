@@ -11,5 +11,14 @@ export default $config({
   },
   async run() {
     new sst.aws.React("RemotionIroiroWeb");
+
+    const { deployRemotionLambda } = await import("./infra/remotion-lambda");
+    const remotionLambda = deployRemotionLambda();
+
+    return {
+      remotionFunctionName: remotionLambda.functionName,
+      remotionBucketName: remotionLambda.bucketName,
+      remotionServeUrl: remotionLambda.serveUrl,
+    };
   },
 });
