@@ -1,65 +1,29 @@
 import { Player } from "@remotion/player";
-import { useMemo, useState } from "react";
+import { COMPOSITION_FPS, COMPOSITION_HEIGHT, COMPOSITION_WIDTH } from "./remotion/constants.mjs";
 import {
-  DURATION_IN_FRAMES,
-  COMPOSITION_FPS,
-  COMPOSITION_HEIGHT,
-  COMPOSITION_WIDTH,
-} from "./remotion/constants.mjs";
+  RemotionIntro,
+  REMOTION_INTRO_DURATION,
+} from "./remotion/components/intro/RemotionIntro";
 import "./app.css";
-import { z } from "zod";
-import { Main } from "./remotion/components/Main";
-import { RenderControls } from "./components/RenderControls";
-import { Spacing } from "./components/Spacing";
-import { Tips } from "./components/Tips";
-import { CompositionProps } from "./remotion/schemata";
 
 export default function Index() {
-  const [text, setText] = useState("React Router + Remotion");
-
-  const inputProps: z.infer<typeof CompositionProps> = useMemo(() => {
-    return {
-      title: text,
-    };
-  }, [text]);
-
   return (
-    <div>
-      <div className="max-w-screen-md m-auto mb-5">
-        <div className="mt-16 mb-6 text-center">
-          <a href="/remotion-intro" className="text-sm underline text-gray-500">
-            → Remotion技術紹介プレゼンを見る
-          </a>
-        </div>
-        <div className="overflow-hidden rounded-geist shadow-[0_0_200px_rgba(0,0,0,0.15)] mb-10">
+    <div style={{ padding: "48px 24px" }}>
+      <div className="max-w-screen-md m-auto">
+        <div className="overflow-hidden rounded-geist shadow-[0_0_200px_rgba(0,0,0,0.15)]">
           <Player
-            component={Main}
-            inputProps={inputProps}
-            durationInFrames={DURATION_IN_FRAMES}
+            component={RemotionIntro}
+            durationInFrames={REMOTION_INTRO_DURATION}
             fps={COMPOSITION_FPS}
             compositionHeight={COMPOSITION_HEIGHT}
             compositionWidth={COMPOSITION_WIDTH}
-            style={{
-              // Can't use tailwind class for width since player's default styles take presedence over tailwind's,
-              // but not over inline styles
-              width: "100%",
-            }}
+            style={{ width: "100%" }}
             controls
             autoPlay
             loop
             initiallyMuted
           />
         </div>
-        <RenderControls
-          text={text}
-          setText={setText}
-          inputProps={inputProps}
-        ></RenderControls>
-        <Spacing></Spacing>
-        <Spacing></Spacing>
-        <Spacing></Spacing>
-        <Spacing></Spacing>
-        <Tips></Tips>
       </div>
     </div>
   );
