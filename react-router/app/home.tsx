@@ -4,6 +4,7 @@ import {
   RemotionIntro,
   REMOTION_INTRO_DURATION,
 } from "./remotion/components/intro/RemotionIntro";
+import { RenderIntroButton } from "./components/RenderIntroButton";
 import "./app.css";
 
 export default function Index() {
@@ -23,6 +24,9 @@ export default function Index() {
             loop
             initiallyMuted
           />
+        </div>
+        <div className="mt-geist">
+          <RenderIntroButton />
         </div>
       </div>
     </div>

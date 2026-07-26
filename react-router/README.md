@@ -45,16 +45,7 @@ Follow these steps to set up video rendering:
 1. Follow the steps in [Remotion Lambda setup guide](https://www.remotion.dev/docs/lambda/setup).
 2. Rename the `.env.example` file to `.env`.
 3. Fill in the `REMOTION_AWS_ACCESS_KEY_ID` and `REMOTION_AWS_SECRET_ACCESS_KEY` values that you got from the first step.
-
-4. Run the following to deploy your Lambda function and Remotion site:
-
-```
-node deploy.mjs
-```
-
-> Rerun this command whenever you have upgraded to a new Remotion version.
-
-5. Restart the server.
+4. Run `sst deploy` (or `sst dev`). It provisions the Lambda render function and the Remotion site automatically as part of the deploy — see `infra/remotion-lambda.ts`. Re-run it whenever you've upgraded Remotion or changed the video template; it's safe to run repeatedly.
 
 ## Commands
 
@@ -100,10 +91,10 @@ Render the example video on AWS Lambda:
 bun run remotion:renderlambda
 ```
 
-Deploy/Update the Remotion video on S3 and the Lambda function:
+Deploy/update the Remotion Lambda function and site (and the rest of the app):
 
 ```
-node deploy.mjs
+bunx sst deploy
 ```
 
 ## Upgrading Remotion

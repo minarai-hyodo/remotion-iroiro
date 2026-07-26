@@ -36,7 +36,6 @@
     "@types/node": "20.12.14",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
-    "dotenv": "17.3.1",
     "eslint": "9.19.0",
     "prettier": "3.8.1",
     "tsx": "4.19.3",
@@ -46,8 +45,7 @@
     "build": "react-router build",
     "dev": "react-router dev",
     "lint": "eslint . && tsc",
-    "remotion:deploy": "tsx app/deploy.ts",
-    "remotion:renderlambda": "remotionb lambda render remotionb-react-router-example LogoAnimation out/logo-animation-lambda-rendered.mp4",
+    "remotion:renderlambda": "remotionb lambda render remotion-react-router-example-4.0.499 RemotionIntro out/remotion-intro-lambda-rendered.mp4",
     "remotion:studio": "remotionb studio",
     "start": "react-router-serve build/server/index.js",
     "typecheck": "react-router typegen && tsc"
