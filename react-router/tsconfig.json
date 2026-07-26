@@ -29,5 +29,5 @@
     "rootDirs": [".", "./.react-router/types"],
     "module": "ESNext"
   },
-  "exclude": ["remotion.config.ts"]
+  "exclude": ["remotion.config.ts","sst.config.ts"]
 }
