@@ -4,8 +4,10 @@ import { COMPOSITION_ID } from "../remotion/constants.mjs";
 const buttonClass =
   "rounded-geist bg-foreground text-background px-geist-half py-geist-quarter text-sm font-medium disabled:bg-button-disabled-color disabled:text-disabled-text-color";
 
+const EMPTY_PROPS = {};
+
 export const RenderIntroButton: React.FC = () => {
-  const { renderMedia, state, undo } = useRendering(COMPOSITION_ID, {});
+  const { renderMedia, state, undo } = useRendering(COMPOSITION_ID, EMPTY_PROPS);
 
   if (state.status === "init") {
     return (

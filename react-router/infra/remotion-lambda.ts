@@ -12,7 +12,10 @@
 import * as command from "@pulumi/command";
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
+
+const OUTPUT_FILE = path.join(os.tmpdir(), "remotion-lambda-deploy-output.json");
 
 function hashDirectory(dir: string): string {
   const hash = crypto.createHash("sha1");
@@ -38,12 +41,16 @@ export function deployRemotionLambda() {
     triggers: [compositionHash],
   });
 
+  // deploy-remotion.mjs writes its result to OUTPUT_FILE rather than stdout, since
+  // deployFunction/getOrCreateBucket/deploySite are free to write their own diagnostics to
+  // stdout and we don't want that corrupting a hand-parsed result. `deploy.stdout` is only used
+  // here to sequence this read after the command has finished — its value isn't parsed itself.
   const outputs = deploy.stdout.apply(
-    (stdout) =>
-      JSON.parse(stdout.trim()) as {
-        functionName: string;
-        bucketName: string;
-        serveUrl: string;
+    () =>
+      JSON.parse(fs.readFileSync(OUTPUT_FILE, "utf-8")) as {
+        functionName: string | null;
+        bucketName: string | null;
+        serveUrl: string | null;
       },
   );
 
