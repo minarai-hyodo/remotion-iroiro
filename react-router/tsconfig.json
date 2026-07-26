@@ -3,8 +3,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".react-router/types/**/*",
-    "app/remotion/constants.mjs",
-    "deploy.mjs"
+    "app/remotion/constants.mjs"
   ],
   "compilerOptions": {
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
@@ -29,5 +28,5 @@
     "rootDirs": [".", "./.react-router/types"],
     "module": "ESNext"
   },
-  "exclude": ["remotion.config.ts", "sst.config.ts", "infra/**/*", ".sst/**/*"]
+  "exclude": ["remotion.config.ts", "sst.config.ts", "infra/**/*", ".sst/**/*", "scripts/**/*"]
 }

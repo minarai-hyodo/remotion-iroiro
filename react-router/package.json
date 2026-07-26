@@ -6,6 +6,7 @@
     "*.css"
   ],
   "dependencies": {
+    "@pulumi/command": "^1.2.1",
     "@react-router/node": "7.12.0",
     "@react-router/serve": "7.12.0",
     "@remotion/cli": "4.0.499",
@@ -45,7 +46,7 @@
     "build": "react-router build",
     "dev": "react-router dev",
     "lint": "eslint . && tsc",
-    "remotion:renderlambda": "remotionb lambda render remotion-react-router-example-4.0.499 RemotionIntro out/remotion-intro-lambda-rendered.mp4",
+    "remotion:renderlambda": "node scripts/render-lambda.mjs",
     "remotion:studio": "remotionb studio",
     "start": "react-router-serve build/server/index.js",
     "typecheck": "react-router typegen && tsc"
