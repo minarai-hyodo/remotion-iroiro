@@ -1,9 +1,9 @@
 import React from "react";
 import { interpolate, useCurrentFrame } from "remotion";
 import { CodeBlock } from "./CodeBlock";
-import { Headline, SceneRoot, SplitPanel } from "./SceneLayout";
+import { Headline, PointList, SceneRoot, SplitPanel } from "./SceneLayout";
 import { COLORS } from "./theme";
-import { fontFamily } from "./fonts";
+import { fontFamily, monoFontFamily } from "./fonts";
 import { pl, num, tag, type CodeLine } from "./tokens";
 
 const lines: CodeLine[] = [
@@ -18,9 +18,15 @@ const lines: CodeLine[] = [
 ];
 
 const SEGMENTS = [
-  { label: "Scene A", color: COLORS.blue, weight: 1 },
-  { label: "Scene B", color: COLORS.mauve, weight: 1.4 },
-  { label: "Scene C", color: COLORS.teal, weight: 1 },
+  { label: "Scene A", color: COLORS.blue, weight: 1, frames: 60 },
+  { label: "Scene B", color: COLORS.mauve, weight: 1.4, frames: 90 },
+  { label: "Scene C", color: COLORS.teal, weight: 1, frames: 60 },
+];
+
+const POINTS = [
+  "durationInFramesで長さを指定するだけで、開始位置は自動計算される",
+  "シーンを差し替えても、後続の位置は自動でずれる",
+  "この動画自体も、7つのSequenceを並べて作られている",
 ];
 
 const TOTAL_WEIGHT = SEGMENTS.reduce((a, s) => a + s.weight, 0);
@@ -76,6 +82,22 @@ const TimelineDemo: React.FC = () => {
           />
         ))}
       </div>
+      <div style={{ display: "flex", gap: 4, marginTop: 8 }}>
+        {SEGMENTS.map((s) => (
+          <div
+            key={s.label}
+            style={{
+              flex: s.weight,
+              fontFamily: monoFontFamily,
+              fontSize: 16,
+              color: COLORS.subtext,
+              textAlign: "center",
+            }}
+          >
+            {s.frames}f
+          </div>
+        ))}
+      </div>
       <div style={{ position: "relative", height: 18, marginTop: 4 }}>
         <div
           style={{
@@ -100,7 +122,15 @@ export const SequenceScene: React.FC = () => {
       <Headline sub="このプレゼン自体も、Sequenceの積み重ねで作られている">
         時間軸は Sequence / Series で組み立てる
       </Headline>
-      <SplitPanel left={<CodeBlock lines={lines} fontSize={24} />} right={<TimelineDemo />} />
+      <SplitPanel
+        left={
+          <div>
+            <CodeBlock lines={lines} fontSize={24} />
+            <PointList items={POINTS} />
+          </div>
+        }
+        right={<TimelineDemo />}
+      />
     </SceneRoot>
   );
 };

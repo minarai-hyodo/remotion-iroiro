@@ -1,7 +1,7 @@
 import React from "react";
 import { interpolate, useCurrentFrame } from "remotion";
 import { CodeBlock } from "./CodeBlock";
-import { Headline, SceneRoot, SplitPanel } from "./SceneLayout";
+import { Headline, PointList, SceneRoot, SplitPanel } from "./SceneLayout";
 import { COLORS } from "./theme";
 import { monoFontFamily } from "./fonts";
 import { kw, pl, num, fn, type CodeLine } from "./tokens";
@@ -14,6 +14,12 @@ const lines: CodeLine[] = [
   [pl("  ["), num("0"), pl(", "), num("30"), pl("],")],
   [pl("  ["), num("0"), pl(", "), num("1"), pl("],")],
   [pl(");")],
+];
+
+const POINTS = [
+  "state管理もランダム性もなく、frameの数だけで映像が決まる",
+  "同じframeなら、何度再生しても同じ結果になる",
+  "だから途中の一部分だけを並列に書き出すこともできる",
 ];
 
 const LOOP = 150;
@@ -64,9 +70,12 @@ const FrameDemo: React.FC = () => {
           fontFamily: monoFontFamily,
           fontSize: 22,
           color: COLORS.subtext,
+          display: "flex",
+          gap: 20,
         }}
       >
-        frame: {local}
+        <span>frame: {local}</span>
+        <span>opacity: {opacity.toFixed(2)}</span>
       </div>
     </div>
   );
@@ -78,7 +87,15 @@ export const FrameScene: React.FC = () => {
       <Headline sub="全てはuseCurrentFrame()から始まる">
         映像の正体は「フレームごとの静止画」
       </Headline>
-      <SplitPanel left={<CodeBlock lines={lines} />} right={<FrameDemo />} />
+      <SplitPanel
+        left={
+          <div>
+            <CodeBlock lines={lines} />
+            <PointList items={POINTS} />
+          </div>
+        }
+        right={<FrameDemo />}
+      />
     </SceneRoot>
   );
 };
