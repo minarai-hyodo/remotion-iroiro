@@ -9,18 +9,21 @@ import { pl, num, tag, type CodeLine } from "./tokens";
 const lines: CodeLine[] = [
   [pl("<"), tag("Series"), pl(">")],
   [pl("  <"), tag("Series.Sequence"), pl(" durationInFrames={"), num("60"), pl("}>")],
-  [pl("    <Intro />")],
+  [pl("    <SceneA />")],
   [pl("  </"), tag("Series.Sequence"), pl(">")],
   [pl("  <"), tag("Series.Sequence"), pl(" durationInFrames={"), num("90"), pl("}>")],
-  [pl("    <Main />")],
+  [pl("    <SceneB />")],
+  [pl("  </"), tag("Series.Sequence"), pl(">")],
+  [pl("  <"), tag("Series.Sequence"), pl(" durationInFrames={"), num("60"), pl("}>")],
+  [pl("    <SceneC />")],
   [pl("  </"), tag("Series.Sequence"), pl(">")],
   [pl("</"), tag("Series"), pl(">")],
 ];
 
 const SEGMENTS = [
-  { label: "Scene A", color: COLORS.blue, weight: 1, frames: 60 },
-  { label: "Scene B", color: COLORS.mauve, weight: 1.4, frames: 90 },
-  { label: "Scene C", color: COLORS.teal, weight: 1, frames: 60 },
+  { label: "Scene A", color: COLORS.blue, frames: 60 },
+  { label: "Scene B", color: COLORS.mauve, frames: 90 },
+  { label: "Scene C", color: COLORS.teal, frames: 60 },
 ];
 
 const POINTS = [
@@ -29,8 +32,7 @@ const POINTS = [
   "この動画自体も、7つのSequenceを並べて作られている",
 ];
 
-const TOTAL_WEIGHT = SEGMENTS.reduce((a, s) => a + s.weight, 0);
-const LOOP = 180;
+const LOOP = SEGMENTS.reduce((a, s) => a + s.frames, 0);
 
 const TimelineDemo: React.FC = () => {
   const frame = useCurrentFrame();
@@ -41,7 +43,7 @@ const TimelineDemo: React.FC = () => {
   let activeIndex = 0;
   let segmentLocalProgress = 0;
   for (let i = 0; i < SEGMENTS.length; i++) {
-    const w = SEGMENTS[i].weight / TOTAL_WEIGHT;
+    const w = SEGMENTS[i].frames / LOOP;
     if (progress < acc + w) {
       activeIndex = i;
       segmentLocalProgress = (progress - acc) / w;
@@ -74,7 +76,7 @@ const TimelineDemo: React.FC = () => {
           <div
             key={s.label}
             style={{
-              flex: s.weight,
+              flex: s.frames,
               backgroundColor: s.color,
               opacity: i === activeIndex ? activeOpacity : 0.25,
               borderRadius: 6,
@@ -87,7 +89,7 @@ const TimelineDemo: React.FC = () => {
           <div
             key={s.label}
             style={{
-              flex: s.weight,
+              flex: s.frames,
               fontFamily: monoFontFamily,
               fontSize: 16,
               color: COLORS.subtext,

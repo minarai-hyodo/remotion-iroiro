@@ -23,12 +23,14 @@ const POINTS = [
   "途中から再生してもズレない、frameベースの計算式",
 ];
 
-const LOOP = 120;
+const SETTLE = 120;
+const CYCLE = SETTLE * 2;
 
 const SpringDemo: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const local = frame % LOOP;
+  const t = frame % CYCLE;
+  const local = t < SETTLE ? t : CYCLE - t;
   const scale = spring({
     frame: local,
     fps,
