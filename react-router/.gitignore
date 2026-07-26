@@ -13,3 +13,5 @@ api
 
 # sst
 .sst
+
+.playwright-cli/

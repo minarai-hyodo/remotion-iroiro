@@ -26,7 +26,12 @@ export default function Index() {
   return (
     <div>
       <div className="max-w-screen-md m-auto mb-5">
-        <div className="overflow-hidden rounded-geist shadow-[0_0_200px_rgba(0,0,0,0.15)] mb-10 mt-16">
+        <div className="mt-16 mb-6 text-center">
+          <a href="/remotion-intro" className="text-sm underline text-gray-500">
+            → Remotion技術紹介プレゼンを見る
+          </a>
+        </div>
+        <div className="overflow-hidden rounded-geist shadow-[0_0_200px_rgba(0,0,0,0.15)] mb-10">
           <Player
             component={Main}
             inputProps={inputProps}

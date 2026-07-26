@@ -14,6 +14,7 @@
     "@remotion/paths": "4.0.499",
     "@remotion/player": "4.0.499",
     "@remotion/shapes": "4.0.499",
+    "@remotion/transitions": "^4.0.499",
     "@tailwindcss/cli": "4.2.0",
     "@tailwindcss/vite": "4.2.0",
     "clsx": "2.1.1",

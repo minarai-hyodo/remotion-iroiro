@@ -7,6 +7,7 @@ import {
   COMPOSITION_WIDTH,
 } from "./constants.mjs";
 import { Main } from "./components/Main";
+import { RemotionIntro, REMOTION_INTRO_DURATION } from "./components/intro/RemotionIntro";
 
 export const RemotionRoot = () => {
   return (
@@ -19,6 +20,14 @@ export const RemotionRoot = () => {
         width={COMPOSITION_WIDTH}
         height={COMPOSITION_HEIGHT}
         defaultProps={{ title: "stranger" }}
+      />
+      <Composition
+        id="RemotionIntro"
+        component={RemotionIntro}
+        durationInFrames={REMOTION_INTRO_DURATION}
+        fps={COMPOSITION_FPS}
+        width={COMPOSITION_WIDTH}
+        height={COMPOSITION_HEIGHT}
       />
     </>
   );
