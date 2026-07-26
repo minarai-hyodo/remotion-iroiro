@@ -63,7 +63,9 @@ const Card: React.FC<{ item: (typeof ITEMS)[number]; delay: number }> = ({ item,
 export const EcosystemScene: React.FC = () => {
   return (
     <SceneRoot>
-      <Headline>書いたコードを、動かす・書き出す</Headline>
+      <Headline sub="同じコンポーネントを、目的に応じて実行方法だけ切り替える">
+        書いたコードを、動かす・書き出す
+      </Headline>
       <AbsoluteFill style={{ top: 240, justifyContent: "flex-start" }}>
         <div style={{ display: "flex", gap: 32, padding: "0 100px" }}>
           {ITEMS.map((item, i) => (

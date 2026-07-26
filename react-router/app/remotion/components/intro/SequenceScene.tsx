@@ -1,30 +1,38 @@
 import React from "react";
 import { interpolate, useCurrentFrame } from "remotion";
 import { CodeBlock } from "./CodeBlock";
-import { Headline, SceneRoot, SplitPanel } from "./SceneLayout";
+import { Headline, PointList, SceneRoot, SplitPanel } from "./SceneLayout";
 import { COLORS } from "./theme";
-import { fontFamily } from "./fonts";
+import { fontFamily, monoFontFamily } from "./fonts";
 import { pl, num, tag, type CodeLine } from "./tokens";
 
 const lines: CodeLine[] = [
   [pl("<"), tag("Series"), pl(">")],
   [pl("  <"), tag("Series.Sequence"), pl(" durationInFrames={"), num("60"), pl("}>")],
-  [pl("    <Intro />")],
+  [pl("    <SceneA />")],
   [pl("  </"), tag("Series.Sequence"), pl(">")],
   [pl("  <"), tag("Series.Sequence"), pl(" durationInFrames={"), num("90"), pl("}>")],
-  [pl("    <Main />")],
+  [pl("    <SceneB />")],
+  [pl("  </"), tag("Series.Sequence"), pl(">")],
+  [pl("  <"), tag("Series.Sequence"), pl(" durationInFrames={"), num("60"), pl("}>")],
+  [pl("    <SceneC />")],
   [pl("  </"), tag("Series.Sequence"), pl(">")],
   [pl("</"), tag("Series"), pl(">")],
 ];
 
 const SEGMENTS = [
-  { label: "Scene A", color: COLORS.blue, weight: 1 },
-  { label: "Scene B", color: COLORS.mauve, weight: 1.4 },
-  { label: "Scene C", color: COLORS.teal, weight: 1 },
+  { label: "Scene A", color: COLORS.blue, frames: 60 },
+  { label: "Scene B", color: COLORS.mauve, frames: 90 },
+  { label: "Scene C", color: COLORS.teal, frames: 60 },
 ];
 
-const TOTAL_WEIGHT = SEGMENTS.reduce((a, s) => a + s.weight, 0);
-const LOOP = 180;
+const POINTS = [
+  "durationInFramesで長さを指定するだけで、開始位置は自動計算される",
+  "シーンを差し替えても、後続の位置は自動でずれる",
+  "この動画自体も、7つのSequenceを並べて作られている",
+];
+
+const LOOP = SEGMENTS.reduce((a, s) => a + s.frames, 0);
 
 const TimelineDemo: React.FC = () => {
   const frame = useCurrentFrame();
@@ -35,7 +43,7 @@ const TimelineDemo: React.FC = () => {
   let activeIndex = 0;
   let segmentLocalProgress = 0;
   for (let i = 0; i < SEGMENTS.length; i++) {
-    const w = SEGMENTS[i].weight / TOTAL_WEIGHT;
+    const w = SEGMENTS[i].frames / LOOP;
     if (progress < acc + w) {
       activeIndex = i;
       segmentLocalProgress = (progress - acc) / w;
@@ -68,12 +76,28 @@ const TimelineDemo: React.FC = () => {
           <div
             key={s.label}
             style={{
-              flex: s.weight,
+              flex: s.frames,
               backgroundColor: s.color,
               opacity: i === activeIndex ? activeOpacity : 0.25,
               borderRadius: 6,
             }}
           />
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 4, marginTop: 8 }}>
+        {SEGMENTS.map((s) => (
+          <div
+            key={s.label}
+            style={{
+              flex: s.frames,
+              fontFamily: monoFontFamily,
+              fontSize: 16,
+              color: COLORS.subtext,
+              textAlign: "center",
+            }}
+          >
+            {s.frames}f
+          </div>
         ))}
       </div>
       <div style={{ position: "relative", height: 18, marginTop: 4 }}>
@@ -100,7 +124,15 @@ export const SequenceScene: React.FC = () => {
       <Headline sub="このプレゼン自体も、Sequenceの積み重ねで作られている">
         時間軸は Sequence / Series で組み立てる
       </Headline>
-      <SplitPanel left={<CodeBlock lines={lines} fontSize={24} />} right={<TimelineDemo />} />
+      <SplitPanel
+        left={
+          <div>
+            <CodeBlock lines={lines} fontSize={24} />
+            <PointList items={POINTS} />
+          </div>
+        }
+        right={<TimelineDemo />}
+      />
     </SceneRoot>
   );
 };

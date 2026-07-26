@@ -1,7 +1,7 @@
 import React from "react";
 import { spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { CodeBlock } from "./CodeBlock";
-import { Headline, SceneRoot, SplitPanel } from "./SceneLayout";
+import { Headline, PointList, SceneRoot, SplitPanel } from "./SceneLayout";
 import { COLORS, RADIUS } from "./theme";
 import { kw, tag, str, num, pl, fn, type CodeLine } from "./tokens";
 
@@ -16,6 +16,12 @@ const lines: CodeLine[] = [
   [pl("    fps={"), num("30"), pl("}")],
   [pl("  />")],
   [pl(");")],
+];
+
+const POINTS = [
+  "JSXやCSSのアニメーションが、そのまま1フレームずつ描画される",
+  "state・propsなど普段のReactの書き方がそのまま使える",
+  "コンポーネント設計が、そのまま動画の構成になる",
 ];
 
 const VideoMock: React.FC = () => {
@@ -57,7 +63,15 @@ export const ConceptScene: React.FC = () => {
       <Headline sub="コードがそのまま映像になる">
         Reactの知識だけで、動画を作れる
       </Headline>
-      <SplitPanel left={<CodeBlock lines={lines} />} right={<VideoMock />} />
+      <SplitPanel
+        left={
+          <div>
+            <CodeBlock lines={lines} />
+            <PointList items={POINTS} />
+          </div>
+        }
+        right={<VideoMock />}
+      />
     </SceneRoot>
   );
 };
