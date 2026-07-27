@@ -9,6 +9,7 @@ import { ConceptScene } from "./ConceptScene";
 import { FrameScene } from "./FrameScene";
 import { SpringScene } from "./SpringScene";
 import { SequenceScene } from "./SequenceScene";
+import { WhySequenceScene } from "./WhySequenceScene";
 import { EcosystemScene } from "./EcosystemScene";
 import { OutroScene } from "./OutroScene";
 
@@ -18,6 +19,7 @@ const SCENE_DURATIONS = {
   frame: 660,
   spring: 660,
   sequence: 750,
+  whySequence: 600,
   ecosystem: 660,
   outro: 240,
 };
@@ -79,6 +81,10 @@ export const RemotionIntro: React.FC = () => {
         {transition()}
         <TransitionSeries.Sequence durationInFrames={SCENE_DURATIONS.sequence}>
           <SequenceScene />
+        </TransitionSeries.Sequence>
+        {transition()}
+        <TransitionSeries.Sequence durationInFrames={SCENE_DURATIONS.whySequence}>
+          <WhySequenceScene />
         </TransitionSeries.Sequence>
         {transition()}
         <TransitionSeries.Sequence durationInFrames={SCENE_DURATIONS.ecosystem}>

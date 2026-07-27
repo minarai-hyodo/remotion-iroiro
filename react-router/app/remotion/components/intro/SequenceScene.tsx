@@ -29,7 +29,7 @@ const SEGMENTS = [
 const POINTS = [
   "durationInFramesで長さを指定するだけで、開始位置は自動計算される",
   "シーンを差し替えても、後続の位置は自動でずれる",
-  "この動画自体も、7つのSequenceを並べて作られている",
+  "この動画自体も、8つのSequenceを並べて作られている",
 ];
 
 const LOOP = SEGMENTS.reduce((a, s) => a + s.frames, 0);
