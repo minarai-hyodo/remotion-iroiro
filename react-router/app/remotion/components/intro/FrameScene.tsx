@@ -14,6 +14,12 @@ const lines: CodeLine[] = [
   [pl("  ["), num("0"), pl(", "), num("30"), pl(", "), num("120"), pl(", "), num("150"), pl("],")],
   [pl("  ["), num("0"), pl(", "), num("1"), pl(", "), num("1"), pl(", "), num("0"), pl("],")],
   [pl(");")],
+  [],
+  [kw("const"), pl(" x = "), fn("interpolate"), pl("(")],
+  [pl("  frame,")],
+  [pl("  ["), num("0"), pl(", "), num("150"), pl("],")],
+  [pl("  ["), num("-140"), pl(", "), num("140"), pl("],")],
+  [pl(");")],
 ];
 
 const POINTS = [
@@ -25,43 +31,6 @@ const POINTS = [
 const FADE = 30;
 const LOOP = 150;
 
-const KeyframeTimeline: React.FC<{ local: number }> = ({ local }) => {
-  const ticks = [0, FADE, LOOP - FADE, LOOP];
-
-  return (
-    <div style={{ width: 360, position: "relative", height: 10 }}>
-      <div style={{ height: 2, backgroundColor: COLORS.panel, marginTop: 4 }} />
-      {ticks.map((t) => (
-        <div
-          key={t}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: `${(t / LOOP) * 100}%`,
-            width: 2,
-            height: 10,
-            backgroundColor: COLORS.subtext,
-            opacity: 0.5,
-            transform: "translateX(-1px)",
-          }}
-        />
-      ))}
-      <div
-        style={{
-          position: "absolute",
-          top: -3,
-          left: `${(local / LOOP) * 100}%`,
-          width: 10,
-          height: 10,
-          borderRadius: "50%",
-          backgroundColor: COLORS.blue,
-          transform: "translateX(-5px)",
-        }}
-      />
-    </div>
-  );
-};
-
 const FrameDemo: React.FC = () => {
   const frame = useCurrentFrame();
   const local = frame % LOOP;
@@ -69,30 +38,37 @@ const FrameDemo: React.FC = () => {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
+  const x = interpolate(local, [0, LOOP], [-140, 140], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
 
   return (
-    <div
-      style={{
-        width: 420,
-        height: 260,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 30,
-        position: "relative",
-      }}
-    >
+    <div style={{ width: 420, height: 260, position: "relative" }}>
       <div
         style={{
-          width: 120,
-          height: 120,
+          position: "absolute",
+          top: "50%",
+          left: 0,
+          right: 0,
+          height: 2,
+          backgroundColor: COLORS.panel,
+          transform: "translateY(-1px)",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          width: 90,
+          height: 90,
           borderRadius: 20,
           backgroundColor: COLORS.blue,
           opacity,
+          transform: `translate(${x - 45}px, -45px)`,
         }}
       />
-      <KeyframeTimeline local={local} />
       <div
         style={{
           position: "absolute",
@@ -107,6 +83,7 @@ const FrameDemo: React.FC = () => {
       >
         <span>frame: {local}</span>
         <span>opacity: {opacity.toFixed(2)}</span>
+        <span>x: {x.toFixed(0)}</span>
       </div>
     </div>
   );
@@ -121,7 +98,7 @@ export const FrameScene: React.FC = () => {
       <SplitPanel
         left={
           <div>
-            <CodeBlock lines={lines} />
+            <CodeBlock lines={lines} fontSize={22} />
             <PointList items={POINTS} />
           </div>
         }
