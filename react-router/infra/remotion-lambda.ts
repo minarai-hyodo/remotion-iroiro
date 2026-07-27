@@ -12,11 +12,12 @@
 import * as command from "@pulumi/command";
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 import { REGION, RENDER_FUNCTION_PREFIX } from "../app/remotion/lambda-config.mjs";
 
-const OUTPUT_FILE = path.join(os.tmpdir(), "remotion-lambda-deploy-output.json");
+// Must match deploy-remotion.mjs. That script prints its result as one stdout line behind this
+// prefix; everything else on stdout is @remotion/lambda's own diagnostics and gets ignored.
+const OUTPUT_PREFIX = "REMOTION_DEPLOY_OUTPUT:";
 
 function hashDirectory(dir: string): string {
   const hash = crypto.createHash("sha1");
@@ -31,29 +32,54 @@ function hashDirectory(dir: string): string {
   return hash.digest("hex");
 }
 
+// The same value `constants.mjs` builds SITE_NAME from (`remotion`'s exported VERSION), read
+// from disk so that sst.config.ts doesn't have to import the `remotion` package itself.
+function installedRemotionVersion(): string {
+  const pkg = path.join(process.cwd(), "node_modules/remotion/package.json");
+  return (JSON.parse(fs.readFileSync(pkg, "utf-8")) as { version: string }).version;
+}
+
 export function deployRemotionLambda() {
-  // Only re-run the (slow) Lambda function + site deploy when the composition source actually
-  // changed, not on every unrelated `sst deploy`.
-  const compositionHash = hashDirectory(path.join(process.cwd(), "app/remotion"));
+  // Only re-run the (slow) Lambda function + site deploy when something it depends on actually
+  // changed, not on every unrelated `sst deploy`. Note that the deploy script itself is part of
+  // the trigger: without it, fixing a bug in deploy-remotion.mjs would leave the command marked
+  // up-to-date and the fix would never actually run.
+  const trigger = crypto
+    .createHash("sha1")
+    .update(hashDirectory(path.join(process.cwd(), "app/remotion")))
+    .update(fs.readFileSync(path.join(process.cwd(), "infra/deploy-remotion.mjs")))
+    // The installed Remotion version decides both the render function's name and SITE_NAME, so
+    // after an upgrade both point at something that doesn't exist yet.
+    .update(installedRemotionVersion())
+    .digest("hex");
 
   const deploy = new command.local.Command("RemotionLambdaDeploy", {
     dir: process.cwd(),
     create: "node infra/deploy-remotion.mjs",
-    triggers: [compositionHash],
+    triggers: [trigger],
   });
 
-  // deploy-remotion.mjs writes its result to OUTPUT_FILE rather than stdout, since
-  // deployFunction/getOrCreateBucket/deploySite are free to write their own diagnostics to
-  // stdout and we don't want that corrupting a hand-parsed result. `deploy.stdout` is only used
-  // here to sequence this read after the command has finished — its value isn't parsed itself.
-  const outputs = deploy.stdout.apply(
-    () =>
-      JSON.parse(fs.readFileSync(OUTPUT_FILE, "utf-8")) as {
-        functionName: string | null;
-        bucketName: string | null;
-        serveUrl: string | null;
-      },
-  );
+  // deploy-remotion.mjs prints its result as a single OUTPUT_PREFIX-prefixed stdout line, mixed
+  // in with @remotion/lambda's own stdout diagnostics — so pick the last matching line rather
+  // than parsing the whole stream. Going through stdout (instead of a tmpfile, as this used to)
+  // keeps the values in Pulumi state, so they survive on a fresh runner where the command itself
+  // is up-to-date and never re-runs.
+  const outputs = deploy.stdout.apply((stdout) => {
+    const line = stdout
+      .split("\n")
+      .reverse()
+      .find((l) => l.trimStart().startsWith(OUTPUT_PREFIX));
+
+    if (!line) {
+      return { functionName: null, bucketName: null, serveUrl: null };
+    }
+
+    return JSON.parse(line.trimStart().slice(OUTPUT_PREFIX.length)) as {
+      functionName: string | null;
+      bucketName: string | null;
+      serveUrl: string | null;
+    };
+  });
 
   return {
     functionName: outputs.apply((o) => o.functionName),
