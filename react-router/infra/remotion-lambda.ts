@@ -14,6 +14,7 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { REGION, RENDER_FUNCTION_PREFIX } from "../app/remotion/lambda-config.mjs";
 
 const OUTPUT_FILE = path.join(os.tmpdir(), "remotion-lambda-deploy-output.json");
 
@@ -58,5 +59,26 @@ export function deployRemotionLambda() {
     functionName: outputs.apply((o) => o.functionName),
     bucketName: outputs.apply((o) => o.bucketName),
     serveUrl: outputs.apply((o) => o.serveUrl),
+  };
+}
+
+// Webサーバー（sst.aws.React のサーバーLambda）がレンダーを依頼するには、レンダー関数を
+// invokeする権限が要る。`renderMediaOnLambda()` も `getRenderProgress()` も、実体はどちらも
+// レンダー関数のinvoke（進捗はS3を直接読まず、status呼び出しで取得している）なので、
+// lambda:InvokeFunction だけで両方まかなえる。これが無いと Render video ボタンが
+// "is not authorized to perform: lambda:InvokeFunction" で落ちる。
+//
+// リソースを関数名そのものではなく `remotion-render-*` の前方一致で指定しているのは、関数名に
+// Remotionのバージョン・RAM・DISK・TIMEOUTが埋め込まれていて（speculateFunctionName() が
+// 逆算しているのと同じ規則）、それらを変えるたびにポリシー側も追随させたくないため。
+// アカウントIDは自アカウントに固定して、ワイルドカードの範囲を関数名だけに留めている。
+export function remotionRenderInvokePermission() {
+  const accountId = aws.getCallerIdentityOutput({}).accountId;
+
+  return {
+    actions: ["lambda:InvokeFunction"],
+    resources: [
+      $interpolate`arn:aws:lambda:${REGION}:${accountId}:function:${RENDER_FUNCTION_PREFIX}*`,
+    ],
   };
 }

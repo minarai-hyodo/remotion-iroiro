@@ -4,13 +4,8 @@ export const COMPOSITION_FPS = 30;
 export const COMPOSITION_WIDTH = 1920;
 export const COMPOSITION_HEIGHT = 1080;
 export const COMPOSITION_ID = "RemotionIntro";
-export const RAM = 3009;
-export const DISK = 10240;
-export const TIMEOUT = 240;
 export const SITE_NAME = "remotion-react-router-example-" + VERSION;
 
-/**
- * Use autocomplete to get a list of available regions.
- * @type {import('@remotion/lambda').AwsRegion}
- */
-export const REGION = "us-east-1";
+// Lambda関数のパラメータ（RAM / DISK / TIMEOUT / REGION）の実体は lambda-config.mjs にある。
+// sst.config.ts からも読めるよう、`remotion` を import しないファイルに分けてある。
+export { RAM, DISK, TIMEOUT, REGION } from "./lambda-config.mjs";
