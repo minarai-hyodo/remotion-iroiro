@@ -61,7 +61,7 @@ renderMediaOnLambda()
    └ 全chunk到着後に結合 → 最終mp4をS3へアップロードして終了
 ```
 
-- **並列数の決まり方**: `concurrency = frameCount / framesPerLambda`。デフォルトでは `framesPerLambda` が動画の長さに応じて自動選択され、0〜10分（30fps）の範囲で並列数が75〜150に補間される。
+- **並列数の決まり方**: `concurrency = frameCount / framesPerLambda`。デフォルトでは `framesPerLambda` が動画の長さに応じて自動選択され、0〜10分（30fps）の範囲で並列数が75〜150に補間される。**ただしこのリポジトリでは既定を使わず `concurrency: 6` に絞っている** — 理由は後述の「同時実行数の上限 10」。
 - **上限・下限**: `framesPerLambda` の最小は5、並列数の最大は200。200を超える設定をするとエラーになる（"more would result in diminishing returns"）。基本はデフォルトに任せるのが推奨。
 - **進捗はポーリング**: WebSocketではなく、S3上の `progress.json` をクライアントが定期的に読みに行く方式。
 
@@ -79,7 +79,7 @@ renderMediaOnLambda()
 | 進捗ポーリング | `app/progress.tsx` の `getRenderProgress()` ← `app/lib/use-rendering.ts` が1秒間隔で叩く |
 | UI | `app/components/RenderIntroButton.tsx` |
 
-設定値（RAM / DISK / TIMEOUT / REGION / SITE_NAME / COMPOSITION_ID）は `app/remotion/constants.mjs` から辿れる。うち Lambda関数のパラメータ（RAM / DISK / TIMEOUT / REGION と関数名の接頭辞）だけは `app/remotion/lambda-config.mjs` に実体があり、`constants.mjs` はそれを再エクスポートしている。分けてあるのは、`constants.mjs` が `SITE_NAME` のために `remotion` 本体を import しており、そのままだと sst.config.ts 側から読めないため。
+設定値（RAM / DISK / TIMEOUT / REGION / RENDER_CONCURRENCY / SITE_NAME / COMPOSITION_ID）は `app/remotion/constants.mjs` から辿れる。うち Lambda関連（RAM / DISK / TIMEOUT / REGION / RENDER_CONCURRENCY と関数名の接頭辞）だけは `app/remotion/lambda-config.mjs` に実体があり、`constants.mjs` はそれを再エクスポートしている。分けてあるのは、`constants.mjs` が `SITE_NAME` のために `remotion` 本体を import しており、そのままだと sst.config.ts 側から読めないため。
 
 ## デプロイ後に誰がレンダーを呼ぶのか（IAM）
 
@@ -149,6 +149,31 @@ InvalidParameterValueException: The role defined for the function cannot be assu
 - 作った直後のロールはIAMの結果整合性のせいで即座には使えず、`CreateFunction` が上記の "cannot be assumed" で弾かれる。5秒間隔で最大8回リトライするようにしてある（実際に初回で1回リトライが入った）
 
 なお、Webサーバー側のロール（前節）とレンダー関数の実行ロールは**別物**。前者は「関数を呼ぶ権限」、後者は「関数自身がS3やCloudWatchを触る権限」。
+
+## 同時実行数の上限 10 で並列レンダリングが即死する
+
+関数が作られてinvokeも通るようになって、ようやくレンダリングが始まった。そして始まった直後に落ちた。
+
+```
+Error: AWS Concurrency limit reached (Original Error: Rate Exceeded.)
+```
+
+Remotionの既定の並列数は**尺に応じて75〜150**。一方、AWSアカウントのLambda同時実行数（Concurrent executions）は**新規アカウントだと既定で10**しかない（`aws lambda get-account-settings` で確認できる。このアカウントはまさに10だった）。100個以上のLambdaを一斉に起動しようとして当然弾かれる。
+
+対処として `renderMediaOnLambda({ concurrency: RENDER_CONCURRENCY })` で並列数を絞っている（`RENDER_CONCURRENCY = 6`）。内訳は **main 1個 + renderer 6個 + 進捗ポーリングのstatus呼び出しが時々1個**なので、上限10に対して余裕がある。**恒久的な解決はクォータの引き上げ申請**で、上げればそのぶん速くなる。
+
+### そこで次に踏むのが main のタイムアウト
+
+並列数を絞ると、1つのLambdaが担当するフレーム数がそのぶん増える（5400フレームを6分割なら1つ900フレーム）。既定の `TIMEOUT = 240` 秒では**mainが撮り切る前に落ちる**。
+
+```
+The main function timed out after 239999ms.
+The following chunks are missing (showing 5 out of 6): Chunk 0 (Frames 0 - 899) ...
+```
+
+実測で240秒時点の進捗が78%だったので、Lambdaの上限いっぱいの **900秒** に引き上げた。タイムアウトは上限であって課金は実使用ぶんなので、余らせても損はしない。
+
+**並列数とタイムアウトはセットで考える**、というのがここでの教訓。並列数を下げる＝1個あたりの持ち時間が伸びる、なので片方だけ変えると必ずもう片方で詰まる。なお `TIMEOUT` は関数名にも入る（`...-900sec`）ので、変えると関数を作り直すことになる。
 
 ## 再デプロイのタイミング
 
