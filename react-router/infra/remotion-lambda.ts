@@ -98,13 +98,21 @@ export function deployRemotionLambda() {
 // Remotionのバージョン・RAM・DISK・TIMEOUTが埋め込まれていて（speculateFunctionName() が
 // 逆算しているのと同じ規則）、それらを変えるたびにポリシー側も追随させたくないため。
 // アカウントIDは自アカウントに固定して、ワイルドカードの範囲を関数名だけに留めている。
-export function remotionRenderInvokePermission() {
+export function remotionRenderPermissions() {
   const accountId = aws.getCallerIdentityOutput({}).accountId;
 
-  return {
-    actions: ["lambda:InvokeFunction"],
-    resources: [
-      $interpolate`arn:aws:lambda:${REGION}:${accountId}:function:${RENDER_FUNCTION_PREFIX}*`,
-    ],
-  };
+  return [
+    {
+      actions: ["lambda:InvokeFunction"],
+      resources: [
+        $interpolate`arn:aws:lambda:${REGION}:${accountId}:function:${RENDER_FUNCTION_PREFIX}*`,
+      ],
+    },
+    {
+      // 並列数をアカウントの同時実行数の上限から決めるため（app/lib/render-concurrency.server.ts）。
+      // GetAccountSettings はアカウント単位の情報なので、リソースは "*" しか指定できない。
+      actions: ["lambda:GetAccountSettings"],
+      resources: ["*"],
+    },
+  ];
 }

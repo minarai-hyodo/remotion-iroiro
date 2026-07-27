@@ -61,7 +61,7 @@ renderMediaOnLambda()
    └ 全chunk到着後に結合 → 最終mp4をS3へアップロードして終了
 ```
 
-- **並列数の決まり方**: `concurrency = frameCount / framesPerLambda`。デフォルトでは `framesPerLambda` が動画の長さに応じて自動選択され、0〜10分（30fps）の範囲で並列数が75〜150に補間される。**ただしこのリポジトリでは既定を使わず `concurrency: 6` に絞っている** — 理由は後述の「同時実行数の上限 10」。
+- **並列数の決まり方**: `concurrency = frameCount / framesPerLambda`。デフォルトでは `framesPerLambda` が動画の長さに応じて自動選択され、0〜10分（30fps）の範囲で並列数が75〜150に補間される。**ただしこのリポジトリでは既定に任せず、アカウントの同時実行数の上限から並列数を決めている** — 理由は後述の「同時実行数の上限 10」。
 - **上限・下限**: `framesPerLambda` の最小は5、並列数の最大は200。200を超える設定をするとエラーになる（"more would result in diminishing returns"）。基本はデフォルトに任せるのが推奨。
 - **進捗はポーリング**: WebSocketではなく、S3上の `progress.json` をクライアントが定期的に読みに行く方式。
 
@@ -74,12 +74,13 @@ renderMediaOnLambda()
 | バケット確保 | 同ファイルの `getOrCreateBucket()` |
 | サイトのデプロイ | 同ファイルの `deploySite()`（entryPoint: `app/remotion/index.ts`） |
 | デプロイの自動実行 | `react-router/infra/remotion-lambda.ts` — `sst deploy` に統合。`app/remotion` のハッシュを取り、動画コードが変わったときだけ再実行する |
-| Webサーバーへの権限付与 | 同ファイルの `remotionRenderInvokePermission()` → `sst.config.ts` の `sst.aws.React(..., { permissions })` |
+| Webサーバーへの権限付与 | 同ファイルの `remotionRenderPermissions()` → `sst.config.ts` の `sst.aws.React(..., { permissions })` |
+| 並列数の決定 | `app/lib/render-concurrency.server.ts` — アカウントの同時実行数の上限から算出 |
 | レンダリング依頼 | `app/render.tsx` → `app/lib/render-video.server.ts` の `renderMediaOnLambda()` |
 | 進捗ポーリング | `app/progress.tsx` の `getRenderProgress()` ← `app/lib/use-rendering.ts` が1秒間隔で叩く |
 | UI | `app/components/RenderIntroButton.tsx` |
 
-設定値（RAM / DISK / TIMEOUT / REGION / RENDER_CONCURRENCY / SITE_NAME / COMPOSITION_ID）は `app/remotion/constants.mjs` から辿れる。うち Lambda関連（RAM / DISK / TIMEOUT / REGION / RENDER_CONCURRENCY と関数名の接頭辞）だけは `app/remotion/lambda-config.mjs` に実体があり、`constants.mjs` はそれを再エクスポートしている。分けてあるのは、`constants.mjs` が `SITE_NAME` のために `remotion` 本体を import しており、そのままだと sst.config.ts 側から読めないため。
+設定値（RAM / DISK / TIMEOUT / REGION / SITE_NAME / COMPOSITION_ID と、並列数の算出に使う定数）は `app/remotion/constants.mjs` から辿れる。うち Lambda関連（RAM / DISK / TIMEOUT / REGION / 並列数の算出用定数 / 関数名の接頭辞）だけは `app/remotion/lambda-config.mjs` に実体があり、`constants.mjs` はそれを再エクスポートしている。分けてあるのは、`constants.mjs` が `SITE_NAME` のために `remotion` 本体を import しており、そのままだと sst.config.ts 側から読めないため。
 
 ## デプロイ後に誰がレンダーを呼ぶのか（IAM）
 
@@ -92,12 +93,14 @@ perform: lambda:InvokeFunction on resource: arn:aws:lambda:us-east-1:...:functio
 
 `app/lib/render-video.server.ts` はアクセスキーの環境変数が無いとエラーを投げる作りだが、Lambda実行環境では `AWS_ACCESS_KEY_ID` などがロールの一時認証情報として**自動的に入っている**ので、このチェックは素通りする。その先のinvokeでロールの権限不足として弾かれる、という順番になる。
 
-必要な権限は `lambda:InvokeFunction` **だけ**。`renderMediaOnLambda()` はもちろん、`getRenderProgress()` も（S3の `progress.json` を直接読むのではなく）レンダー関数を `status` 呼び出しでinvokeする実装なので、これ1つで進捗ポーリングまで通る。出来上がったmp4はpublicなS3 URLでブラウザが直接取りに行くため、Webサーバー側にS3権限は要らない。
+レンダリング自体に必要な権限は `lambda:InvokeFunction` **だけ**。`renderMediaOnLambda()` はもちろん、`getRenderProgress()` も（S3の `progress.json` を直接読むのではなく）レンダー関数を `status` 呼び出しでinvokeする実装なので、これ1つで進捗ポーリングまで通る。出来上がったmp4はpublicなS3 URLでブラウザが直接取りに行くため、Webサーバー側にS3権限は要らない。
+
+これに加えて `lambda:GetAccountSettings` を付けている。こちらはレンダリングそのものではなく、**並列数をアカウントの同時実行数の上限から決める**ためのもの（後述）。
 
 ```ts
 // sst.config.ts
 new sst.aws.React("RemotionIroiroWeb", {
-  permissions: [remotionRenderInvokePermission()],
+  permissions: remotionRenderPermissions(),
 });
 ```
 
@@ -160,7 +163,21 @@ Error: AWS Concurrency limit reached (Original Error: Rate Exceeded.)
 
 Remotionの既定の並列数は**尺に応じて75〜150**。一方、AWSアカウントのLambda同時実行数（Concurrent executions）は**新規アカウントだと既定で10**しかない（`aws lambda get-account-settings` で確認できる。このアカウントはまさに10だった）。100個以上のLambdaを一斉に起動しようとして当然弾かれる。
 
-対処として `renderMediaOnLambda({ concurrency: RENDER_CONCURRENCY })` で並列数を絞っている（`RENDER_CONCURRENCY = 6`）。内訳は **main 1個 + renderer 6個 + 進捗ポーリングのstatus呼び出しが時々1個**なので、上限10に対して余裕がある。**恒久的な解決はクォータの引き上げ申請**で、上げればそのぶん速くなる。
+対処として `renderMediaOnLambda({ concurrency })` で並列数を絞っている。ただし**値は定数ではなく、レンダリングのたびにアカウントに問い合わせて決めている**（`app/lib/render-concurrency.server.ts`）。
+
+```
+Lambda GetAccountSettings
+  → UnreservedConcurrentExecutions（無ければ ConcurrentExecutions）
+  → 引く CONCURRENCY_HEADROOM (4) … main 1個 + status呼び出し 1個 + 安全余裕 2個
+  → 150以上あるなら undefined（＝尺を見て決めるRemotionの既定に任せる）
+  → それ未満ならその数を指定する
+```
+
+上限10の現状なら `10 - 4 = 6` で、実測で完走を確認した値と一致する。定数で6と書かないのは、**クォータを引き上げたときに絞ったままなのを忘れて遅いレンダリングを続ける**のを避けるため。この作りなら引き上げた瞬間に、再デプロイなしで速くなる。
+
+同時実行数は**リージョンごと**の値なので、Webサーバー自身のリージョン（ap-northeast-1）ではなくレンダー関数のリージョン（us-east-1）を見ている。Webサーバーのロールに `lambda:GetAccountSettings` が要る（アカウント単位の情報なのでリソースは `*` しか書けない）。取得に失敗したときは `RENDER_CONCURRENCY_FALLBACK`（6）に落として続行する — ここで例外にするとレンダリング自体ができなくなるため。ただし黙って落とすのではなく `console.warn` でCloudWatchに残す。
+
+**恒久的な解決はクォータの引き上げ申請**。
 
 ### そこで次に踏むのが main のタイムアウト
 

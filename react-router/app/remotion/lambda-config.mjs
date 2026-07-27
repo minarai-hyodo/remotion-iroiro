@@ -17,18 +17,30 @@ export const DISK = 10240;
 // 余らせても損はしない。
 export const TIMEOUT = 900;
 
+// レンダリングの並列数は定数ではなく、AWSアカウントのLambda同時実行数の上限から
+// その都度決めている（`app/lib/render-concurrency.server.ts`）。Remotionの既定は尺に応じて
+// 75〜150並列で、同時実行数が新規アカウント既定の10しかないと即 "AWS Concurrency limit
+// reached (Rate Exceeded)" になる。かといって定数で絞ると、クォータを引き上げたときに
+// 絞ったままなのを忘れる。以下はその計算に使う値。
+// @see https://www.remotion.dev/docs/lambda/troubleshooting/rate-limit
+
 /**
- * `renderMediaOnLambda({ concurrency })` に渡す並列数。
- *
- * Remotionの既定は尺に応じて75〜150並列だが、このAWSアカウントはLambdaの同時実行数
- * （Concurrent executions）が新規アカウント既定の **10** のままで、既定値のまま投げると
- * "AWS Concurrency limit reached (Rate Exceeded)" で即死する。
- *
- * 内訳は main 1個 + renderer この数 + 進捗ポーリングのstatus呼び出しが時々1個なので、
- * 6なら上限10に対して余裕がある。クォータを引き上げれば増やせる（そのぶん速くなる）。
- * @see https://www.remotion.dev/docs/lambda/troubleshooting/rate-limit
+ * 同時実行数の上限のうち、rendererに使わずに空けておく数。
+ * 内訳は main 1個 + 進捗ポーリングのstatus呼び出し 1個 + 安全余裕 2個。
  */
-export const RENDER_CONCURRENCY = 6;
+export const CONCURRENCY_HEADROOM = 4;
+
+/**
+ * アカウントの同時実行数を取得できなかったときに使う並列数。上限10のアカウントで
+ * フル尺のレンダリングが完走することを実測した値なので、安全側に倒した既定として使える。
+ */
+export const RENDER_CONCURRENCY_FALLBACK = 6;
+
+/**
+ * Remotionが既定で使う並列数の上限（尺に応じて75〜150に補間される、その上端）。
+ * これだけ余裕があるなら、こちらで指定するより尺を見て決めるRemotionの既定の方が賢い。
+ */
+export const REMOTION_MAX_DEFAULT_CONCURRENCY = 150;
 
 /**
  * Use autocomplete to get a list of available regions.
