@@ -10,26 +10,13 @@ import { FrameScene } from "./FrameScene";
 import { SpringScene } from "./SpringScene";
 import { SequenceScene } from "./SequenceScene";
 import { WhySequenceScene } from "./WhySequenceScene";
-import { EcosystemScene } from "./EcosystemScene";
+import { RenderPipelineScene } from "./RenderPipelineScene";
+import { ParallelRenderScene } from "./ParallelRenderScene";
+import { DeployScene } from "./DeployScene";
 import { OutroScene } from "./OutroScene";
+import { SCENE_DURATIONS, TRANSITION_DURATION } from "./timeline";
 
-const SCENE_DURATIONS = {
-  title: 150,
-  concept: 540,
-  frame: 660,
-  spring: 660,
-  sequence: 750,
-  whySequence: 600,
-  ecosystem: 660,
-  outro: 240,
-};
-
-const TRANSITION_DURATION = 20;
-const SCENE_COUNT = Object.keys(SCENE_DURATIONS).length;
-
-export const REMOTION_INTRO_DURATION =
-  Object.values(SCENE_DURATIONS).reduce((a, b) => a + b, 0) -
-  (SCENE_COUNT - 1) * TRANSITION_DURATION;
+export { REMOTION_INTRO_DURATION } from "./timeline";
 
 const transition = () => (
   <TransitionSeries.Transition
@@ -87,8 +74,16 @@ export const RemotionIntro: React.FC = () => {
           <WhySequenceScene />
         </TransitionSeries.Sequence>
         {transition()}
-        <TransitionSeries.Sequence durationInFrames={SCENE_DURATIONS.ecosystem}>
-          <EcosystemScene />
+        <TransitionSeries.Sequence durationInFrames={SCENE_DURATIONS.renderPipeline}>
+          <RenderPipelineScene />
+        </TransitionSeries.Sequence>
+        {transition()}
+        <TransitionSeries.Sequence durationInFrames={SCENE_DURATIONS.parallelRender}>
+          <ParallelRenderScene />
+        </TransitionSeries.Sequence>
+        {transition()}
+        <TransitionSeries.Sequence durationInFrames={SCENE_DURATIONS.deploy}>
+          <DeployScene />
         </TransitionSeries.Sequence>
         {transition()}
         <TransitionSeries.Sequence durationInFrames={SCENE_DURATIONS.outro}>
