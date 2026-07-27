@@ -10,14 +10,14 @@ export default $config({
     };
   },
   async run() {
-    const { deployRemotionLambda, remotionRenderInvokePermission } = await import(
+    const { deployRemotionLambda, remotionRenderPermissions } = await import(
       "./infra/remotion-lambda"
     );
     const remotionLambda = deployRemotionLambda();
 
     new sst.aws.React("RemotionIroiroWeb", {
       // サーバー側の render / progress アクションがRemotionのレンダー関数を叩けるようにする。
-      permissions: [remotionRenderInvokePermission()],
+      permissions: remotionRenderPermissions(),
     });
 
     return {
