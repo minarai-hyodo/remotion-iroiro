@@ -1,6 +1,7 @@
 import { deployFunction, getOrCreateBucket, deploySite, getRolePolicy } from "@remotion/lambda";
 import {
   CreateRoleCommand,
+  EntityAlreadyExistsException,
   IAMClient,
   PutRolePolicyCommand,
   UpdateAssumeRolePolicyCommand,
@@ -74,7 +75,11 @@ try {
   );
   roleWasCreated = true;
 } catch (err) {
-  if (err.name !== "EntityAlreadyExists") {
+  // Match on the SDK's error class, not a string: the thrown error's `name` is
+  // "EntityAlreadyExistsException" while "EntityAlreadyExists" is only its `Code` field, so
+  // comparing against the latter silently never matches — and this branch is dead on the one
+  // run that creates the role, so a fresh account can't catch it.
+  if (!(err instanceof EntityAlreadyExistsException)) {
     throw err;
   }
   await iam.send(
