@@ -5,6 +5,7 @@ import { Headline, PointList, SceneRoot, SplitPanel } from "./SceneLayout";
 import { COLORS } from "./theme";
 import { fontFamily, monoFontFamily } from "./fonts";
 import { pl, num, tag, type CodeLine } from "./tokens";
+import { SCENE_COUNT } from "./timeline";
 
 const lines: CodeLine[] = [
   [pl("<"), tag("Series"), pl(">")],
@@ -29,7 +30,7 @@ const SEGMENTS = [
 const POINTS = [
   "durationInFramesで長さを指定するだけで、開始位置は自動計算される",
   "シーンを差し替えても、後続の位置は自動でずれる",
-  "この動画自体も、8つのSequenceを並べて作られている",
+  `この動画自体も、${SCENE_COUNT}個のSequenceを並べて作られている`,
 ];
 
 const LOOP = SEGMENTS.reduce((a, s) => a + s.frames, 0);
