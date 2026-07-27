@@ -3,7 +3,11 @@
 // SITE_NAME のために `remotion` 本体を import しており、それをSSTのesbuildバンドルに
 // 巻き込みたくない。値はここが唯一の定義で、`constants.mjs` は再エクスポートしている。
 
-export const RAM = 3009;
+// Remotionの推奨は 3009（3008MBを超えると2vCPU目がフルに付く境界）だが、このAWSアカウントは
+// Lambdaのメモリ上限が既定の3008MBに制限されていて、3009だと deployFunction() が
+// ValidationException: 'MemorySize' ... must have value less than or equal to 3008 で落ちる。
+// 上限緩和はAWSサポート/クォータ引き上げ待ちなので、それまでは上限ぴったりの3008で運用する。
+export const RAM = 3008;
 export const DISK = 10240;
 export const TIMEOUT = 240;
 

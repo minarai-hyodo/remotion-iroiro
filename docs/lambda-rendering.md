@@ -69,7 +69,8 @@ renderMediaOnLambda()
 
 | ステップ | 実装 |
 | --- | --- |
-| Lambda関数のデプロイ | `react-router/infra/deploy-remotion.mjs` の `deployFunction()` |
+| レンダー関数の実行ロール作成 | `react-router/infra/deploy-remotion.mjs` — `getRolePolicy()` の内容で `remotion-lambda-role` を作る |
+| Lambda関数のデプロイ | 同ファイルの `deployFunction()` |
 | バケット確保 | 同ファイルの `getOrCreateBucket()` |
 | サイトのデプロイ | 同ファイルの `deploySite()`（entryPoint: `app/remotion/index.ts`） |
 | デプロイの自動実行 | `react-router/infra/remotion-lambda.ts` — `sst deploy` に統合。`app/remotion` のハッシュを取り、動画コードが変わったときだけ再実行する |
@@ -104,6 +105,51 @@ new sst.aws.React("RemotionIroiroWeb", {
 
 なお、レンダー関数**自身**のロール（S3の読み書きなど）は `deployFunction()` がRemotion側で用意するので、こちらで面倒を見る必要はない。
 
+## デプロイが黙って何もしない（`Function not found`）
+
+権限を付けた次に踏んだのがこれ。
+
+```
+Error: Function not found: arn:aws:lambda:us-east-1:...:function:remotion-render-4-0-499-...:$LATEST
+```
+
+invokeは通ったが、**呼ぼうとしている関数がそもそも存在しなかった**。原因は `deploy-remotion.mjs` にあった「AWS認証情報が見つからなければスキップして exit 0」というガードで、判定材料が `AWS_PROFILE` / `AWS_ACCESS_KEY_ID` などの**環境変数だけ**だったこと。SST AutoDeploy（CodeBuild）はロールの認証情報をコンテナのcredentialsエンドポイントで渡すため環境変数は空で、毎回このスキップに落ちていた。しかも exit 0 なので `sst deploy` は成功として表示され、**Lambda関数もサイトも一度も作られていないアプリがデプロイされ続けていた**。
+
+対処は3つ。
+
+1. **スキップ用のガードを廃止した。** そもそも `sst deploy` 自体がAWS認証情報なしでは動かないので、ここまで到達している時点で認証情報はある。判定は既定のプロバイダチェーン（＝SSTが使ったのと同じチェーン）に任せ、Remotionの `checkCredentials()` だけ `REMOTION_SKIP_AWS_CREDENTIALS_CHECK` で外す。**失敗したらデプロイごと落とす**。黙って半端な状態を出荷するより、赤くなって気付ける方がよい。
+2. **トリガーのハッシュに `deploy-remotion.mjs` 自身とRemotionのバージョンを含めた。** `triggers` が `app/remotion` のハッシュだけだと、デプロイスクリプトのバグを直しても「変更なし」と判定されて**修正が二度と実行されない**。バージョンは関数名と `SITE_NAME` の両方を決めるので、上げた直後は必ず作り直しが要る。
+3. **スクリプトの結果の受け渡しをtmpfileからstdoutに戻した。** tmpfileだと、コマンドが再実行されない（＝triggers不変の）新しいランナー上でファイルが無く読み取りに失敗する。`REMOTION_DEPLOY_OUTPUT:` プレフィックス付きの1行をstdoutに出し、読む側は最後に一致した行だけを見るようにして、Remotion自身のstdout出力と混ざっても壊れないようにしてある（プレフィックス無しでstdoutをJSONとして読もうとしたのが、そもそもtmpfileに逃げた理由だった）。
+
+### スキップをやめた瞬間に出てきた、隠れていた2つの失敗
+
+スキップを外して実際に走らせたら、デプロイは**2回続けて別の理由で落ちた**。どちらもガードのせいで一度も表に出ていなかったもので、つまり仮に認証情報の問題が無かったとしても、この関数は最初から作れていなかった。
+
+**① メモリ上限 3008MB**
+
+```
+ValidationException: 'MemorySize' value failed to satisfy constraint:
+Member must have value less than or equal to 3008
+```
+
+Remotionの推奨値は **3009MB**（3008を超えると2つ目のvCPUがフルに付く境界なので、ドキュメントもテンプレートもこの値を使っている）だが、**AWSアカウント側のLambdaメモリ上限が既定の3008MBに制限されている**と1MB足りずに弾かれる。上限緩和はサポート／クォータ引き上げ申請が要るので、それまでは `RAM = 3008` で運用する。関数名にメモリ量が入る（`...-mem3008mb-...`）ため、この値を変えると関数名も変わる点に注意。`speculateFunctionName()` も同じ `RAM` を見ているので、アプリ側とはズレない。
+
+**② レンダー関数の実行ロールが無い**
+
+```
+InvalidParameterValueException: The role defined for the function cannot be assumed by Lambda.
+```
+
+`deployFunction()` は実行ロール `remotion-lambda-role` を**作ってくれない**。Remotionのセットアップガイドでは、コンソールか `npx remotion lambda policies role` の出力を使って**手で作る**手順になっている。作っていなければ当然「そんなロールは引き受けられない」で落ちる。
+
+このリポジトリでは `deploy-remotion.mjs` がこのロールも面倒を見るようにした（新しいAWSアカウントでも `sst deploy` 一発で動く状態にするため）。
+
+- ポリシー文書はリポジトリにコピーせず、**Remotion自身の `getRolePolicy()` から取る**。バージョンアップで必要な権限が増えても自動で追従する（コピーだと、レンダー時に出所の分かりにくい権限エラーとして表面化する）
+- `CreateRole` が `EntityAlreadyExists` なら信頼ポリシーだけ更新、`PutRolePolicy` は upsert なので、何度流しても同じ結果になる
+- 作った直後のロールはIAMの結果整合性のせいで即座には使えず、`CreateFunction` が上記の "cannot be assumed" で弾かれる。5秒間隔で最大8回リトライするようにしてある（実際に初回で1回リトライが入った）
+
+なお、Webサーバー側のロール（前節）とレンダー関数の実行ロールは**別物**。前者は「関数を呼ぶ権限」、後者は「関数自身がS3やCloudWatchを触る権限」。
+
 ## 再デプロイのタイミング
 
 | 変更内容 | `deployFunction` | `deploySite` |
@@ -122,6 +168,7 @@ new sst.aws.React("RemotionIroiroWeb", {
 - **`serveUrl` にはサイト「名」を渡してもよい**: `app/render.tsx` は `serveUrl: SITE_NAME` とサイト名を渡している。フルURLでなくてもRemotion側が解決してくれる。
 - **各chunkが参照アセットを全部ダウンロードする**: "Each chunk will download all assets that are referenced in this chunk" なので、200並列なら同じ画像を最大200回取りに行くことになる。自前サーバーから配信していると負荷がかかるため、外部アセットはCDN推奨。`staticFile()` のアセットはサイトバンドルに含まれるのでS3から配信される。
 - **AWS認証情報は `REMOTION_` プレフィックス必須ではない**: 解決順は `REMOTION_AWS_PROFILE` / `AWS_PROFILE` → `REMOTION_AWS_ACCESS_KEY_ID` / `SECRET` → `AWS_ACCESS_KEY_ID` / `SECRET`。プレフィックスは「同一プロセス内の他のAWS SDK利用と混ざらないように」という推奨であって必須ではない。IAMロールやEC2インスタンスメタデータに任せたい場合は `REMOTION_SKIP_AWS_CREDENTIALS_CHECK` でチェックを飛ばせる。
+- **環境変数が無い＝認証情報が無い、ではない**: 上の解決順は**環境変数しか見ていない**。CI（SST AutoDeployのCodeBuildなど）ではコンテナのcredentialsエンドポイント経由でロールの認証情報が渡るので、`AWS_PROFILE` も `AWS_ACCESS_KEY_ID` も**設定されていないのに認証情報はちゃんとある**。この状態でRemotionの `checkCredentials()` は例外を投げる（`getCredentials()` の方は `undefined` を返し、AWS SDKの既定のプロバイダチェーンに委ねる作りになっている）ので、`REMOTION_SKIP_AWS_CREDENTIALS_CHECK` を立ててチェックだけ外し、解決はSDKに任せるのが正解。→ 詳しくは下の「デプロイが黙って何もしない」
 
 ## 参考
 
