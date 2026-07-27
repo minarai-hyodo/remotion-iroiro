@@ -9,7 +9,26 @@
 // 上限緩和はAWSサポート/クォータ引き上げ待ちなので、それまでは上限ぴったりの3008で運用する。
 export const RAM = 3008;
 export const DISK = 10240;
-export const TIMEOUT = 240;
+
+// この関数はmain（全体の指揮 + 結合）としてもrenderer（chunk1個分の描画）としても動くので、
+// タイムアウトは「動画全体を撮り切る時間」を賄えないといけない。RENDER_CONCURRENCY を絞った
+// ぶん1つあたりの担当フレームが増えるため、240秒だとmainが先に落ちる（実測: 240秒で78%）。
+// Lambdaの上限いっぱいの900秒にしてある。タイムアウトは上限であって課金は実使用ぶんなので、
+// 余らせても損はしない。
+export const TIMEOUT = 900;
+
+/**
+ * `renderMediaOnLambda({ concurrency })` に渡す並列数。
+ *
+ * Remotionの既定は尺に応じて75〜150並列だが、このAWSアカウントはLambdaの同時実行数
+ * （Concurrent executions）が新規アカウント既定の **10** のままで、既定値のまま投げると
+ * "AWS Concurrency limit reached (Rate Exceeded)" で即死する。
+ *
+ * 内訳は main 1個 + renderer この数 + 進捗ポーリングのstatus呼び出しが時々1個なので、
+ * 6なら上限10に対して余裕がある。クォータを引き上げれば増やせる（そのぶん速くなる）。
+ * @see https://www.remotion.dev/docs/lambda/troubleshooting/rate-limit
+ */
+export const RENDER_CONCURRENCY = 6;
 
 /**
  * Use autocomplete to get a list of available regions.

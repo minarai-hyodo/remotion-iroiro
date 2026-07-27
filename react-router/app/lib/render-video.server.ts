@@ -5,7 +5,7 @@ import {
 import type { RenderResponse } from "./types";
 import { z } from "zod";
 import { CompositionProps } from "~/remotion/schemata";
-import { DISK, RAM, REGION, TIMEOUT } from "~/remotion/constants.mjs";
+import { DISK, RAM, REGION, RENDER_CONCURRENCY, TIMEOUT } from "~/remotion/constants.mjs";
 
 export const renderVideo = async ({
   serveUrl,
@@ -48,6 +48,8 @@ export const renderVideo = async ({
     composition,
     inputProps,
     codec: "h264",
+    // 既定（75〜150並列）だとアカウントのLambda同時実行数の上限に当たって即死する。
+    concurrency: RENDER_CONCURRENCY,
     downloadBehavior: {
       type: "download",
       fileName: outName,

@@ -8,4 +8,4 @@ export const SITE_NAME = "remotion-react-router-example-" + VERSION;
 
 // Lambda関数のパラメータ（RAM / DISK / TIMEOUT / REGION）の実体は lambda-config.mjs にある。
 // sst.config.ts からも読めるよう、`remotion` を import しないファイルに分けてある。
-export { RAM, DISK, TIMEOUT, REGION } from "./lambda-config.mjs";
+export { RAM, DISK, TIMEOUT, REGION, RENDER_CONCURRENCY } from "./lambda-config.mjs";
