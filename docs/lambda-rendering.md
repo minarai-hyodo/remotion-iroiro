@@ -73,11 +73,36 @@ renderMediaOnLambda()
 | バケット確保 | 同ファイルの `getOrCreateBucket()` |
 | サイトのデプロイ | 同ファイルの `deploySite()`（entryPoint: `app/remotion/index.ts`） |
 | デプロイの自動実行 | `react-router/infra/remotion-lambda.ts` — `sst deploy` に統合。`app/remotion` のハッシュを取り、動画コードが変わったときだけ再実行する |
+| Webサーバーへの権限付与 | 同ファイルの `remotionRenderInvokePermission()` → `sst.config.ts` の `sst.aws.React(..., { permissions })` |
 | レンダリング依頼 | `app/render.tsx` → `app/lib/render-video.server.ts` の `renderMediaOnLambda()` |
 | 進捗ポーリング | `app/progress.tsx` の `getRenderProgress()` ← `app/lib/use-rendering.ts` が1秒間隔で叩く |
 | UI | `app/components/RenderIntroButton.tsx` |
 
-設定値（RAM / DISK / TIMEOUT / REGION / SITE_NAME / COMPOSITION_ID）は `app/remotion/constants.mjs` に集約されている。
+設定値（RAM / DISK / TIMEOUT / REGION / SITE_NAME / COMPOSITION_ID）は `app/remotion/constants.mjs` から辿れる。うち Lambda関数のパラメータ（RAM / DISK / TIMEOUT / REGION と関数名の接頭辞）だけは `app/remotion/lambda-config.mjs` に実体があり、`constants.mjs` はそれを再エクスポートしている。分けてあるのは、`constants.mjs` が `SITE_NAME` のために `remotion` 本体を import しており、そのままだと sst.config.ts 側から読めないため。
+
+## デプロイ後に誰がレンダーを呼ぶのか（IAM）
+
+ローカル開発では `.env` のアクセスキーでレンダー関数を叩くが、**デプロイ後のWebサーバーはSSTが作ったIAMロールで動く**。ここが盲点で、ロールに何も足さないと Render video ボタンがこう落ちる:
+
+```
+User: arn:aws:sts::...:assumed-role/...RemotionIroiroWebServer...Role/... is not authorized to
+perform: lambda:InvokeFunction on resource: arn:aws:lambda:us-east-1:...:function:remotion-render-...
+```
+
+`app/lib/render-video.server.ts` はアクセスキーの環境変数が無いとエラーを投げる作りだが、Lambda実行環境では `AWS_ACCESS_KEY_ID` などがロールの一時認証情報として**自動的に入っている**ので、このチェックは素通りする。その先のinvokeでロールの権限不足として弾かれる、という順番になる。
+
+必要な権限は `lambda:InvokeFunction` **だけ**。`renderMediaOnLambda()` はもちろん、`getRenderProgress()` も（S3の `progress.json` を直接読むのではなく）レンダー関数を `status` 呼び出しでinvokeする実装なので、これ1つで進捗ポーリングまで通る。出来上がったmp4はpublicなS3 URLでブラウザが直接取りに行くため、Webサーバー側にS3権限は要らない。
+
+```ts
+// sst.config.ts
+new sst.aws.React("RemotionIroiroWeb", {
+  permissions: [remotionRenderInvokePermission()],
+});
+```
+
+対象リソースは関数名そのものではなく `arn:aws:lambda:<region>:<account>:function:remotion-render-*` と前方一致で指定している。関数名にRemotionのバージョン・RAM・DISK・TIMEOUTが埋め込まれる（`speculateFunctionName()` が逆算しているのと同じ規則）ので、それらを変えるたびにIAMポリシー側も直す羽目になるのを避けるため。ワイルドカードは関数名部分だけに留め、アカウントIDは自アカウントに固定してある。
+
+なお、レンダー関数**自身**のロール（S3の読み書きなど）は `deployFunction()` がRemotion側で用意するので、こちらで面倒を見る必要はない。
 
 ## 再デプロイのタイミング
 
