@@ -10,15 +10,17 @@ const lines: CodeLine[] = [
   [kw("const"), pl(" frame = "), fn("useCurrentFrame"), pl("();")],
   [kw("const"), pl(" { fps } = "), fn("useVideoConfig"), pl("();")],
   [],
-  [kw("const"), pl(" scale = "), fn("spring"), pl("({")],
-  [pl("  frame,")],
-  [pl("  fps,")],
-  [pl("  config: { damping: "), num("12"), pl(" },")],
-  [pl("});")],
+  [pl("["), num("4"), pl(", "), num("12"), pl(", "), num("30"), pl("].map((damping) =>")],
+  [pl("  "), fn("spring"), pl("({")],
+  [pl("    frame,")],
+  [pl("    fps,")],
+  [pl("    config: { damping },")],
+  [pl("  })")],
+  [pl(");")],
 ];
 
 const POINTS = [
-  "dampingやmassの値で、硬さ・跳ね方を調整できる",
+  "dampingが小さいほど大きく跳ね返り、大きいほどピタッと止まる",
   "keyframeを手打ちしなくても、自然な減衰運動になる",
   "途中から再生してもズレない、frameベースの計算式",
 ];
@@ -26,7 +28,9 @@ const POINTS = [
 const SETTLE = 120;
 const CYCLE = SETTLE * 2;
 
-const SpringDemo: React.FC = () => {
+const DAMPINGS = [4, 12, 30];
+
+const SpringBall: React.FC<{ damping: number }> = ({ damping }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame % CYCLE;
@@ -34,45 +38,52 @@ const SpringDemo: React.FC = () => {
   const scale = spring({
     frame: local,
     fps,
-    config: { damping: 12 },
+    config: { damping },
   });
 
   return (
     <div
       style={{
-        width: 420,
-        height: 260,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
-        position: "relative",
+        gap: 14,
       }}
     >
       <div
         style={{
           width: 140,
           height: 140,
-          borderRadius: "50%",
-          backgroundColor: COLORS.mauve,
-          transform: `scale(${scale})`,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          fontFamily: monoFontFamily,
-          fontSize: 22,
-          color: COLORS.subtext,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        scale: {scale.toFixed(2)}
+        <div
+          style={{
+            width: 84,
+            height: 84,
+            borderRadius: "50%",
+            backgroundColor: COLORS.mauve,
+            transform: `scale(${scale})`,
+          }}
+        />
+      </div>
+      <div style={{ fontFamily: monoFontFamily, fontSize: 18, color: COLORS.subtext, textAlign: "center" }}>
+        <div>damping: {damping}</div>
+        <div>scale: {scale.toFixed(2)}</div>
       </div>
     </div>
   );
 };
+
+const SpringDemo: React.FC = () => (
+  <div style={{ width: 460, display: "flex", justifyContent: "space-between" }}>
+    {DAMPINGS.map((damping) => (
+      <SpringBall key={damping} damping={damping} />
+    ))}
+  </div>
+);
 
 export const SpringScene: React.FC = () => {
   return (
